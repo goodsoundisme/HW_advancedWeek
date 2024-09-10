@@ -12,8 +12,11 @@ import org.example.expert.domain.common.exception.InvalidRequestException;
 import org.example.expert.domain.user.entity.User;
 import org.example.expert.domain.user.enums.UserRole;
 import org.example.expert.domain.user.repository.UserRepository;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,13 +30,23 @@ public class AuthService {
     @Transactional
     public SignupResponse signup(SignupRequest signupRequest) {
 
-        String encodedPassword = passwordEncoder.encode(signupRequest.getPassword());
+//        String encodedPassword = passwordEncoder.encode(signupRequest.getPassword());
 
         UserRole userRole = UserRole.of(signupRequest.getUserRole());
 
-        if (userRepository.existsByEmail(signupRequest.getEmail())) {
-            throw new InvalidRequestException("이미 존재하는 이메일입니다.");
-        }
+
+        // level 1-1 : signupReqeust의 email 값이 없을 때, passwordEncoder의 encode() 동작이 불필요하게 일어나지 않게 코드를 개선해주세요.
+        //email값이 있는지 확인 > 이미 존재하는 email인지 확인 > encode실행
+
+        Optional.ofNullable(userRepository.findByEmail(signupRequest.getEmail())
+                .filter(email-> !userRepository.existsByEmail(signupRequest.getEmail()))
+                .orElseThrow(()-> new InvalidRequestException("이메일이 이미 존재하거나, 비어있습니다.")));
+
+//        if (userRepository.existsByEmail(signupRequest.getEmail())) {
+//            throw new InvalidRequestException("이미 존재하는 이메일입니다.");
+//        }
+        String encodedPassword = passwordEncoder.encode(signupRequest.getPassword());
+
 
         User newUser = new User(
                 signupRequest.getEmail(),
